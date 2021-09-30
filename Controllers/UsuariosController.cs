@@ -1,75 +1,90 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WebApiALMTextil;
+using WebApiALMTextil.DTO.LoginDTO;
 using WebApiALMTextil.Entities;
+using WebApiALMTextil.Entities.Login;
 
 namespace WebApiALMTextil.Controllers
 {
+    // [ApiController]
     [Route("api/[controller]")]
-    [ApiController]
-    public class UsuariosController : ControllerBase
+    public class CuentasController : ControllerBase
     {
+        private readonly UserManager<IdentityUser> userManager;
+        private readonly SignInManager<IdentityUser> signInManager;
         private readonly ApplicationDbContext context;
-
-        public UsuariosController(ApplicationDbContext context)
+        private readonly IMapper mapper;
+        public CuentasController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, ApplicationDbContext context, IMapper mapper)
         {
+            this.userManager = userManager;
+            this.signInManager = signInManager;
             this.context = context;
+            this.mapper = mapper;
         }
-
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Usuario>>> Get()
+        [HttpPost("RegistrarCliente")]
+        public async Task<ActionResult> RegistarCliente(CredencialesUsuario credenciales, ClienteDTO ClienteCreacionDTO)
         {
-            var Usuarios = await context.Usuarios.ToListAsync();
-            return Usuarios;
-        }
-
-        [HttpGet("{id}", Name = "ObtenerUsuarios")]
-        public async Task<ActionResult<Usuario>> Get(int id)
-        {
-            var Usuario = await context.Usuarios.FirstOrDefaultAsync(x => x.id == id);
-
-            if (Usuario == null)
+            var registroresult = RegistrarUsuario(credenciales).Result;
+            if (registroresult == true)
             {
-                return NotFound();
+                var usuario = await userManager.FindByEmailAsync(credenciales.Email);
+                var ClienteCreacion = mapper.Map<Cliente>(ClienteCreacionDTO);
+                ClienteCreacion.UsuarioId = usuario.Id;
+                context.Add(ClienteCreacion);
+                await context.SaveChangesAsync();
+                return new CreatedAtRouteResult("ObtenerClientes", new { id = ClienteCreacion.id }, ClienteCreacion);
             }
-
-            return Usuario;
+            else
+            {
+                return BadRequest(RegistrarUsuario(credenciales).Result);
+            }
         }
-
+        [HttpPost("RegistrarEmpresa")]
+        public async Task<ActionResult> RegistrarEmpresa(CredencialesUsuario credenciales, EmpresaDTO EmpresaCreacionDTO)
+        {
+            var registroresult = RegistrarUsuario(credenciales).Result;
+            if (registroresult == true)
+            {
+                var usuario = await userManager.FindByEmailAsync(credenciales.Email);
+                var EmpresaCreacion = mapper.Map<Empresa>(EmpresaCreacionDTO);
+                EmpresaCreacion.UsuarioId = usuario.Id;
+                context.Add(EmpresaCreacion);
+                await context.SaveChangesAsync();
+                return new CreatedAtRouteResult("ObtenerEmpresas", new { id = EmpresaCreacion.id }, EmpresaCreacion);
+            }
+            else
+            {
+                return BadRequest(RegistrarUsuario(credenciales).Result);
+            }
+        }
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(CredencialesUsuario credencialesUsuario)
+        {
+            var resultado = await signInManager.PasswordSignInAsync(credencialesUsuario.Email, credencialesUsuario.Password, isPersistent: false, false);
+            if (resultado.Succeeded)
+            {
+                return Ok();
+            }
+            else
+            {
+                return BadRequest("Login Incorrecto");
+            }
+        }
         [HttpPost]
-        public async Task<ActionResult> Post([FromBody] Usuario UsuarioCreacion)
+        public async Task<bool> RegistrarUsuario(CredencialesUsuario credenciales)
         {
-            context.Add(UsuarioCreacion);
-            await context.SaveChangesAsync();
-            return new CreatedAtRouteResult("ObtenerUsuarios", new { id = UsuarioCreacion.id }, UsuarioCreacion);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<ActionResult> Put(int id, [FromBody] Usuario UsuarioActualizacion)
-        {
-            UsuarioActualizacion.id = id;
-            context.Entry(UsuarioActualizacion).State = EntityState.Modified;
-            await context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<Usuario>> Delete(int id)
-        {
-            var Usuarioid = await context.Usuarios.Select(x => x.id).FirstOrDefaultAsync(x => x == id);
-
-            if (Usuarioid == default(int))
+            var usuario = new IdentityUser { UserName = credenciales.Email, Email = credenciales.Email };
+            var result = await userManager.CreateAsync(usuario, credenciales.Password);
+            if (result.Succeeded)
             {
-                return NotFound();
+                return true;
             }
-            context.Remove(new Usuario { id = Usuarioid });
-            await context.SaveChangesAsync();
-            return NoContent();
+            else
+            {
+                return false;
+            }
         }
-
     }
 }

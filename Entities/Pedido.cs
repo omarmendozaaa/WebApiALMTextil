@@ -9,6 +9,7 @@ namespace WebApiALMTextil.Entities
         public int id_Empresa { get; set; }
         public int id_Local { get; set; }
         public int id_Medidas { get; set; }
+        public int id_DetallePedido { get; set; }
         public DateTime fecha_Entrega { get; set; }
         public DateTime created_at { get; set; }
         //Relaciones
@@ -16,5 +17,6 @@ namespace WebApiALMTextil.Entities
         public Empresa Empresa { get; set; }
         public Local Local { get; set; }
         public Medidas Medidas { get; set; }
+        public DetallePedido DetallePedido { get; set; }
     }
 }

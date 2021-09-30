@@ -5,7 +5,6 @@ namespace WebApiALMTextil.Entities
     public class DetallePedido
     {
         public int id { get; set; }
-        public int id_Pedido { get; set; }
         public int id_Prenda { get; set; }
         public int cantidad { get; set; }
         public float precio { get; set; }

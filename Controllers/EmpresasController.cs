@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApiALMTextil;
+using WebApiALMTextil.DTO.LoginDTO;
 using WebApiALMTextil.Entities;
 
 namespace WebApiALMTextil.Controllers
@@ -14,21 +16,23 @@ namespace WebApiALMTextil.Controllers
     public class EmpresasController : ControllerBase
     {
         private readonly ApplicationDbContext context;
+        private readonly IMapper mapper;
 
-        public EmpresasController(ApplicationDbContext context)
+        public EmpresasController(ApplicationDbContext context, IMapper mapper)
         {
             this.context = context;
+            this.mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Empresa>>> Get()
+        public async Task<ActionResult<IEnumerable<EmpresaDTO>>> Get()
         {
             var Empresas = await context.Empresas.ToListAsync();
-            return Empresas;
+            return mapper.Map<List<EmpresaDTO>>(Empresas);
         }
 
         [HttpGet("{id}", Name = "ObtenerEmpresas")]
-        public async Task<ActionResult<Empresa>> Get(int id)
+        public async Task<ActionResult<EmpresaDTO>> Get(int id)
         {
             var Empresa = await context.Empresas.FirstOrDefaultAsync(x => x.id == id);
 
@@ -37,20 +41,23 @@ namespace WebApiALMTextil.Controllers
                 return NotFound();
             }
 
-            return Empresa;
+            return mapper.Map<EmpresaDTO>(Empresa);
         }
 
         [HttpPost]
-        public async Task<ActionResult> Post([FromBody] Empresa EmpresaCreacion)
+        public async Task<ActionResult> Post([FromBody] EmpresaDTO EmpresaCreacionDTO, string UsuarioId)
         {
+            var EmpresaCreacion = mapper.Map<Empresa>(EmpresaCreacionDTO);
+            EmpresaCreacion.UsuarioId = UsuarioId;
             context.Add(EmpresaCreacion);
             await context.SaveChangesAsync();
             return new CreatedAtRouteResult("ObtenerEmpresas", new { id = EmpresaCreacion.id }, EmpresaCreacion);
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult> Put(int id, [FromBody] Empresa EmpresaActualizacion)
+        public async Task<ActionResult> Put(int id, [FromBody] EmpresaDTO EmpresaActualizacionDTO)
         {
+            var EmpresaActualizacion = mapper.Map<Empresa>(EmpresaActualizacionDTO);
             EmpresaActualizacion.id = id;
             context.Entry(EmpresaActualizacion).State = EntityState.Modified;
             await context.SaveChangesAsync();
